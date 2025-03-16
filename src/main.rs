@@ -16,29 +16,13 @@ struct Collider;
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
-#[derive(Component, PartialEq, Eq, Deref, DerefMut)]
-struct Facing(Direction);
-
-#[derive(Component, Debug, PartialEq, Eq, Copy, Clone)]
-enum Direction {
-    Left,
-    Right,
-}
-
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let dino = Sprite::from_image(asset_server.load("dino.png"));
     let mob = Sprite::from_image(asset_server.load("mob.png"));
 
-          
     commands.spawn(Camera2d);
 
-    commands.spawn((
-        dino,
-        Transform::from_xyz(-250., 0., 0.),
-        Dino,
-        Collider,
-        Facing(Direction::Right),
-    ));
+    commands.spawn((dino, Transform::from_xyz(-250., 0., 0.), Dino, Collider));
 
     commands.spawn((
         mob.clone(),
@@ -61,24 +45,23 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn move_dino(
+    mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut Facing), With<Dino>>,
+    mut query: Query<(Entity, &mut Sprite, &mut Transform), With<Dino>>,
     time: Res<Time>,
 ) {
     let mut direction = Vec3::ZERO;
-    let (mut transform, mut facing) = query.single_mut();
+    let (entity, mut sprite, mut transform) = query.single_mut();
 
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
-        if *facing == Facing(Direction::Right) {
-            transform.rotation *= Quat::from_xyzw(0., -1., 0., 0.);
-            *facing = Facing(Direction::Left);
+        if !sprite.flip_x {
+            sprite.flip_x = true;
         }
         direction.x -= 1.;
     }
     if keyboard_input.pressed(KeyCode::ArrowRight) {
-        if *facing == Facing(Direction::Left) {
-            transform.rotation *= Quat::from_xyzw(0., -1., 0., 0.);
-            *facing = Facing(Direction::Right);
+        if sprite.flip_x {
+            sprite.flip_x = false;
         }
         direction.x += 1.;
     }
@@ -88,17 +71,24 @@ fn move_dino(
     if keyboard_input.pressed(KeyCode::ArrowDown) {
         direction.y -= 1.;
     }
+
+    if keyboard_input.pressed(KeyCode::Space) {
+        commands.entity(entity).insert(Visibility::Hidden);
+    }
+    if keyboard_input.pressed(KeyCode::KeyV) {
+        commands.entity(entity).insert(Visibility::Visible);
+    }
     transform.translation.x += direction.x * DINO_SPEED * time.delta_secs();
     transform.translation.y += direction.y * DINO_SPEED * time.delta_secs();
 }
 
-fn move_mobs(mut query: Query<(&mut Transform, &mut Velocity)>, time: Res<Time>) {
-    for (mut transform, mut velocity) in &mut query {
+fn move_mobs(mut query: Query<(&mut Sprite, &mut Transform, &mut Velocity)>, time: Res<Time>) {
+    for (mut sprite, mut transform, mut velocity) in &mut query {
         let x = transform.translation.x + velocity.x * time.delta_secs();
         let y = transform.translation.y + velocity.y * time.delta_secs();
 
         if x > WINDOW_WIDTH / 2. || x < -WINDOW_WIDTH / 2. {
-            transform.rotation *= Quat::from_xyzw(0., -1., 0., 0.);
+            sprite.flip_x = !sprite.flip_x;
             velocity.x *= -1.;
         }
         if y > WINDOW_HEIGHT / 2. || y < -WINDOW_HEIGHT / 2. {
