@@ -1,9 +1,11 @@
-use bevy::{prelude::*, window::*};
+use bevy::render::render_resource::ShaderType;
+use bevy::{math::prelude::*, prelude::*, window::*};
 
 const WINDOW_WIDTH: f32 = 800.;
 const WINDOW_HEIGHT: f32 = 600.;
 const DINO_SPEED: f32 = 500.;
-
+const DINO_SIZE: Vec2 = Vec2::new(128., 128.);
+const MOB_SIZE: Vec2 = Vec2::new(64., 64.);
 #[derive(Component)]
 struct Dino;
 
@@ -13,31 +15,47 @@ struct Mob;
 #[derive(Component)]
 struct Collider;
 
+#[derive(Resource, Default)]
+struct GameState {
+    game_over: bool,
+}
+
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut game_state: ResMut<GameState>,
+) {
+    game_state.game_over = false;
+
     let dino = Sprite::from_image(asset_server.load("dino.png"));
-    let mob = Sprite::from_image(asset_server.load("mob.png"));
+    let mob_image = asset_server.load("mob.png");
 
     commands.spawn(Camera2d);
 
-    commands.spawn((dino, Transform::from_xyz(-250., 0., 0.), Dino, Collider));
+    commands.spawn((dino, Transform::from_xyz(-250., -25., 0.), Dino, Collider));
 
     commands.spawn((
-        mob.clone(),
+        Sprite {
+            image: mob_image.clone(),
+            flip_x: false,
+            ..default()
+        },
         Transform::from_xyz(0., 0., 0.),
         Mob,
         Velocity(Vec2::new(-250.0, 0.)),
         Collider,
     ));
 
-    let mut transform = Transform::default();
-    transform = transform.with_translation(Vec3::new(100., 0., 0.));
-    transform.rotate(Quat::from_xyzw(0., -1., 0., 0.));
     commands.spawn((
-        mob.clone(),
-        transform,
+        Sprite {
+            image: mob_image,
+            flip_x: true,
+            ..default()
+        },
+        Transform::from_xyz(100., 0., 0.),
         Mob,
         Velocity(Vec2::new(250.0, 0.)),
         Collider,
@@ -99,16 +117,48 @@ fn move_mobs(mut query: Query<(&mut Sprite, &mut Transform, &mut Velocity)>, tim
     }
 }
 
+fn collision_detection(
+    dino_query: Query<&Transform, With<Dino>>,
+    mobs_query: Query<&Transform, With<Mob>>,
+    mut game_state: ResMut<GameState>,
+) {
+    let dino_transform = dino_query.single();
+    let dino_rect = Rect::new(
+        dino_transform.translation.x - 64.,
+        dino_transform.translation.y - 64.,
+        dino_transform.translation.x + DINO_SIZE.x - 64.,
+        dino_transform.translation.y + DINO_SIZE.y - 64.,
+    );
+    for mob_transform in mobs_query.iter() {
+        let mob_rect = Rect::new(
+            mob_transform.translation.x - 32.,
+            mob_transform.translation.y - 32.,
+            mob_transform.translation.x + MOB_SIZE.x - 32.,
+            mob_transform.translation.y + MOB_SIZE.y - 32.,
+        );
+        let ri = mob_rect.intersect(dino_rect);
+        if !ri.is_empty() {
+            game_state.game_over = true;
+            println!("{:?} WARNING! Collision detected!!", ri);
+        }
+    }
+}
+
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT).into(),
-                ..default()
-            }),
-            ..default()
-        }))
+        .init_resource::<GameState>()
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT).into(),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(ImagePlugin::default_nearest()),
+        )
         .add_systems(Startup, setup)
-        .add_systems(Update, (move_dino, move_mobs).chain())
+        .add_systems(Update, (move_dino, move_mobs, collision_detection).chain())
         .run();
 }
