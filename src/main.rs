@@ -4,8 +4,8 @@ use bevy::{math::prelude::*, prelude::*, window::*};
 const WINDOW_WIDTH: f32 = 800.;
 const WINDOW_HEIGHT: f32 = 600.;
 const DINO_SPEED: f32 = 500.;
-const DINO_SIZE: Vec2 = Vec2::new(128., 128.);
-const MOB_SIZE: Vec2 = Vec2::new(64., 64.);
+const DINO_SIZE: f32 = 64.;
+const MOB_SIZE: f32 = 64.;
 #[derive(Component)]
 struct Dino;
 
@@ -123,25 +123,25 @@ fn collision_detection(
     mut game_state: ResMut<GameState>,
 ) {
     let dino_transform = dino_query.single();
-    let dino_rect = Rect::new(
-        dino_transform.translation.x - 64.,
-        dino_transform.translation.y - 64.,
-        dino_transform.translation.x + DINO_SIZE.x - 64.,
-        dino_transform.translation.y + DINO_SIZE.y - 64.,
-    );
+    let dino_rect = make_rect(dino_transform, DINO_SIZE);
     for mob_transform in mobs_query.iter() {
-        let mob_rect = Rect::new(
-            mob_transform.translation.x - 32.,
-            mob_transform.translation.y - 32.,
-            mob_transform.translation.x + MOB_SIZE.x - 32.,
-            mob_transform.translation.y + MOB_SIZE.y - 32.,
-        );
+        let mob_rect = make_rect(mob_transform, MOB_SIZE);
         let ri = mob_rect.intersect(dino_rect);
         if !ri.is_empty() {
             game_state.game_over = true;
             println!("{:?} WARNING! Collision detected!!", ri);
         }
     }
+}
+
+fn make_rect(dino_transform: &Transform, width: f32) -> Rect {
+    let size = width / 2.;
+    Rect::new(
+        dino_transform.translation.x - size,
+        dino_transform.translation.y - size,
+        dino_transform.translation.x + size,
+        dino_transform.translation.y + size,
+    )
 }
 
 fn main() {
