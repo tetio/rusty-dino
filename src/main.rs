@@ -51,29 +51,29 @@ fn setup(
         ))
         .insert(Visibility::Hidden);
 
-    // commands.spawn((
-    //     Sprite {
-    //         image: mob_image.clone(),
-    //         flip_x: false,
-    //         ..default()
-    //     },
-    //     Transform::from_xyz(0., 0., 0.),
-    //     Mob,
-    //     Velocity(Vec2::new(-250.0, 0.)),
-    //     Collider,
-    // ));
+    commands.spawn((
+        Sprite {
+            image: mob_image.clone(),
+            flip_x: false,
+            ..default()
+        },
+        Transform::from_xyz(0., 0., 0.),
+        Mob,
+        Velocity(Vec2::new(-250.0, 0.)),
+        Collider,
+    ));
 
-    // commands.spawn((
-    //     Sprite {
-    //         image: mob_image.clone(),
-    //         flip_x: false,
-    //         ..default()
-    //     },
-    //     Transform::from_xyz(0., 0., 0.),
-    //     Mob,
-    //     Velocity(Vec2::new(-250.0, 0.)),
-    //     Collider,
-    // ));
+    commands.spawn((
+        Sprite {
+            image: mob_image.clone(),
+            flip_x: false,
+            ..default()
+        },
+        Transform::from_xyz(0., 0., 0.),
+        Mob,
+        Velocity(Vec2::new(-250.0, 0.)),
+        Collider,
+    ));
     commands.spawn((
         Sprite {
             image: mob_image.clone(),
@@ -183,19 +183,31 @@ fn collision_detection(
     let dino_rect = make_rect(dino_transform, DINO_SIZE);
     let dino_box_entity = dino_box_query.single();
 
-    for mob_transform in mobs_query.iter() {
+    let collision = mobs_query.iter().any(|mob_transform| {
         let mob_rect = make_rect(mob_transform, MOB_SIZE);
         let ri = mob_rect.intersect(dino_rect);
-        if !ri.is_empty() {
-            game_state.game_over = true;
-            let a = commands.entity(dino_box_entity).;
-            commands.entity(dino_box_entity).insert(Visibility::Visible);
-            break;
-            // println!("{:?} WARNING! Collision detected!!", ri);
-        } else {
-            commands.entity(dino_box_entity).insert(Visibility::Hidden);
-        }
+        !ri.is_empty()
+    });
+
+    if collision {
+        game_state.game_over = true;
+        commands.entity(dino_box_entity).insert(Visibility::Visible);
+    } else {
+        commands.entity(dino_box_entity).insert(Visibility::Hidden);
     }
+
+    // for mob_transform in mobs_query.iter() {
+    //     let mob_rect = make_rect(mob_transform, MOB_SIZE);
+    //     let ri = mob_rect.intersect(dino_rect);
+    //     if !ri.is_empty() {
+    //         game_state.game_over = true;
+    //         commands.entity(dino_box_entity).insert(Visibility::Visible);
+    //         break;
+    //         // println!("{:?} WARNING! Collision detected!!", ri);
+    //     } else {
+    //         commands.entity(dino_box_entity).insert(Visibility::Hidden);
+    //     }
+    // }
 }
 
 fn make_rect(dino_transform: &Transform, width: f32) -> Rect {
